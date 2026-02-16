@@ -186,6 +186,67 @@
       flex-direction: column;
       gap: 1.25rem;
     }
+    .layer-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .layer-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      max-height: 220px;
+      overflow: auto;
+    }
+    .layer-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      width: 100%;
+      text-align: left;
+      padding: 0.55rem 0.7rem;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #ddd;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .layer-item:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+    .layer-item.active {
+      background: rgba(238, 136, 85, 0.18);
+      border-color: rgba(238, 136, 85, 0.45);
+      color: #fff;
+    }
+    .layer-item .layer-name {
+      font-weight: 650;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+    .layer-item .layer-preview {
+      flex: 1;
+      font-size: 0.85rem;
+      color: #aaa;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .layer-item.active .layer-preview {
+      color: rgba(255, 255, 255, 0.9);
+    }
+    .layer-empty {
+      font-size: 0.9rem;
+      color: #777;
+      padding: 0.25rem 0.25rem 0.4rem;
+    }
     .control-group {
       display: flex;
       flex-direction: column;
@@ -381,12 +442,16 @@
         <h2>Text & Style</h2>
         <div class="controls">
           <div class="control-group">
-            <label for="topText">Top text</label>
-            <textarea id="topText" placeholder="When you... (Enter for new line)" rows="2"></textarea>
+            <label>Text layers</label>
+            <div class="layer-actions">
+              <button class="btn btn-primary" id="addTextLayerBtn" type="button">Add text</button>
+              <button class="btn btn-secondary" id="deleteTextLayerBtn" type="button" disabled>Delete selected</button>
+            </div>
+            <div class="layer-list" id="textLayerList" aria-label="Text layers list"></div>
           </div>
           <div class="control-group">
-            <label for="bottomText">Bottom text</label>
-            <textarea id="bottomText" placeholder="...but then (Enter for new line)" rows="2"></textarea>
+            <label for="layerText">Selected text</label>
+            <textarea id="layerText" placeholder="Type your text (Enter for new line)" rows="3" disabled></textarea>
           </div>
           <div class="control-group">
             <label>Font size</label>
@@ -413,8 +478,6 @@
     const errorMessage = document.getElementById('errorMessage');
     const workspace = document.getElementById('workspace');
     const memeCanvas = document.getElementById('memeCanvas');
-    const topTextInput = document.getElementById('topText');
-    const bottomTextInput = document.getElementById('bottomText');
     const fontSizeInput = document.getElementById('fontSize');
     const fontSizeValue = document.getElementById('fontSizeValue');
     const textColorInput = document.getElementById('textColor');
@@ -424,9 +487,15 @@
 
     const ctx = memeCanvas.getContext('2d');
     let currentImage = null;
-    let textPositions = { top: null, bottom: null };
-    let dragging = null;
+    let textLayers = [];
+    let selectedLayerId = null;
+    let draggingLayerId = null;
     let dragOffset = { x: 0, y: 0 };
+
+    const addTextLayerBtn = document.getElementById('addTextLayerBtn');
+    const deleteTextLayerBtn = document.getElementById('deleteTextLayerBtn');
+    const textLayerList = document.getElementById('textLayerList');
+    const layerTextInput = document.getElementById('layerText');
 
     function showError(msg) {
       errorMessage.textContent = msg;
@@ -469,14 +538,86 @@
       workspace.classList.remove('active');
       currentImage = null;
       imageInput.value = '';
+      downloadBtn.disabled = true;
+      textLayers = [];
+      selectedLayerId = null;
+      draggingLayerId = null;
+      syncLayerEditor();
+      renderLayerList();
     }
 
-    function resetTextPositions() {
+    function generateId() {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+      return `layer_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    }
+
+    function getSelectedLayer() {
+      return textLayers.find(l => l.id === selectedLayerId) || null;
+    }
+
+    function ensureInitialLayers() {
       const padding = 30;
-      textPositions = {
-        top: { x: memeCanvas.width / 2, y: padding },
-        bottom: { x: memeCanvas.width / 2, y: memeCanvas.height - padding }
-      };
+      const fontSize = parseInt(fontSizeInput.value, 10);
+      const baseYBottom = Math.max(padding, memeCanvas.height - padding - fontSize);
+
+      textLayers = [
+        { id: generateId(), name: 'Text 1', text: '', x: memeCanvas.width / 2, y: padding },
+        { id: generateId(), name: 'Text 2', text: '', x: memeCanvas.width / 2, y: baseYBottom }
+      ];
+      selectedLayerId = textLayers[0]?.id ?? null;
+      syncLayerEditor();
+      renderLayerList();
+    }
+
+    function syncLayerEditor() {
+      const layer = getSelectedLayer();
+      if (!layer) {
+        layerTextInput.value = '';
+        layerTextInput.disabled = true;
+        deleteTextLayerBtn.disabled = true;
+        return;
+      }
+      layerTextInput.disabled = false;
+      layerTextInput.value = layer.text;
+      deleteTextLayerBtn.disabled = textLayers.length === 0;
+    }
+
+    function renderLayerList() {
+      textLayerList.innerHTML = '';
+      if (textLayers.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'layer-empty';
+        empty.textContent = 'No text layers. Click “Add text” to create one.';
+        textLayerList.appendChild(empty);
+        return;
+      }
+
+      textLayers.forEach((layer, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'layer-item' + (layer.id === selectedLayerId ? ' active' : '');
+        btn.setAttribute('aria-label', `Select ${layer.name}`);
+
+        const name = document.createElement('span');
+        name.className = 'layer-name';
+        name.textContent = layer.name || `Text ${idx + 1}`;
+
+        const preview = document.createElement('span');
+        preview.className = 'layer-preview';
+        preview.textContent = (layer.text || '').replace(/\s+/g, ' ').trim() || '(empty)';
+
+        btn.appendChild(name);
+        btn.appendChild(preview);
+
+        btn.addEventListener('click', () => {
+          selectedLayerId = layer.id;
+          syncLayerEditor();
+          renderLayerList();
+          drawMeme();
+        });
+
+        textLayerList.appendChild(btn);
+      });
     }
 
     function getCanvasCoords(e) {
@@ -496,7 +637,7 @@
         currentImage = img;
         memeCanvas.width = img.width;
         memeCanvas.height = img.height;
-        resetTextPositions();
+        ensureInitialLayers();
         showWorkspace();
         downloadBtn.disabled = false;
         drawMeme();
@@ -533,7 +674,7 @@
         currentImage = img;
         memeCanvas.width = img.width;
         memeCanvas.height = img.height;
-        resetTextPositions();
+        ensureInitialLayers();
         showWorkspace();
         downloadBtn.disabled = false;
         drawMeme();
@@ -553,13 +694,9 @@
       ctx.clearRect(0, 0, memeCanvas.width, memeCanvas.height);
       ctx.drawImage(currentImage, 0, 0);
 
-      const topText = topTextInput.value.trim();
-      const bottomText = bottomTextInput.value.trim();
       const fontSize = parseInt(fontSizeInput.value, 10);
 
-      if (!topText && !bottomText) return;
-
-      if (!textPositions.top) resetTextPositions();
+      if (!textLayers || textLayers.length === 0) return;
 
       ctx.strokeStyle = '#000000';
       ctx.fillStyle = textColorInput.value;
@@ -570,45 +707,25 @@
 
       const lineHeight = fontSize * 1.15;
 
-      function drawLines(lines, pos, baseline) {
-        if (baseline === 'top') {
-          let y = pos.y;
-          for (const line of lines) {
-            if (line.trim()) {
-              ctx.textBaseline = 'top';
-              ctx.strokeText(line, pos.x, y);
-              ctx.fillText(line, pos.x, y);
-            }
-            y += lineHeight;
+      ctx.textBaseline = 'top';
+      for (const layer of textLayers) {
+        const text = (layer.text || '').trimEnd();
+        if (!text.trim()) continue;
+        const lines = text.split(/\r?\n/);
+        let y = layer.y;
+        for (const line of lines) {
+          if (line.trim()) {
+            ctx.strokeText(line, layer.x, y);
+            ctx.fillText(line, layer.x, y);
           }
-        } else {
-          let y = pos.y;
-          for (let i = lines.length - 1; i >= 0; i--) {
-            const line = lines[i];
-            if (line.trim()) {
-              ctx.textBaseline = 'bottom';
-              ctx.strokeText(line, pos.x, y);
-              ctx.fillText(line, pos.x, y);
-            }
-            y -= lineHeight;
-          }
+          y += lineHeight;
         }
-      }
-
-      if (topText) {
-        const lines = topText.split(/\r?\n/);
-        drawLines(lines, textPositions.top, 'top');
-      }
-
-      if (bottomText) {
-        const lines = bottomText.split(/\r?\n/);
-        drawLines(lines, textPositions.bottom, 'bottom');
       }
     }
 
-    function hitTestText(block, text, x, y) {
-      if (!text || !block) return false;
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
+    function hitTestLayer(layer, x, y) {
+      if (!layer || !layer.text) return false;
+      const lines = layer.text.split(/\r?\n/).filter(l => l.trim());
       if (lines.length === 0) return false;
       const fontSize = parseInt(fontSizeInput.value, 10);
       const lineHeight = fontSize * 1.15;
@@ -619,49 +736,50 @@
         maxW = Math.max(maxW, ctx.measureText(line).width);
       }
       const h = lines.length * lineHeight;
-      const pos = block === 'top' ? textPositions.top : textPositions.bottom;
-      const left = pos.x - maxW / 2;
-      const right = pos.x + maxW / 2;
-      const top = block === 'top' ? pos.y : pos.y - h;
-      const bottom = block === 'top' ? pos.y + h : pos.y;
+      const left = layer.x - maxW / 2;
+      const right = layer.x + maxW / 2;
+      const top = layer.y;
+      const bottom = layer.y + h;
       return x >= left && x <= right && y >= top && y <= bottom;
     }
 
     function handleCanvasMouseDown(e) {
       if (!currentImage) return;
       const { x, y } = getCanvasCoords(e);
-      const topText = topTextInput.value.trim();
-      const bottomText = bottomTextInput.value.trim();
-      if (hitTestText('top', topText, x, y)) {
-        dragging = 'top';
-        dragOffset = { x: textPositions.top.x - x, y: textPositions.top.y - y };
-        memeCanvas.classList.add('dragging');
-      } else if (hitTestText('bottom', bottomText, x, y)) {
-        dragging = 'bottom';
-        dragOffset = { x: textPositions.bottom.x - x, y: textPositions.bottom.y - y };
-        memeCanvas.classList.add('dragging');
+      // Pick top-most hit layer (last drawn).
+      for (let i = textLayers.length - 1; i >= 0; i--) {
+        const layer = textLayers[i];
+        if (hitTestLayer(layer, x, y)) {
+          draggingLayerId = layer.id;
+          selectedLayerId = layer.id;
+          dragOffset = { x: layer.x - x, y: layer.y - y };
+          memeCanvas.classList.add('dragging');
+          syncLayerEditor();
+          renderLayerList();
+          drawMeme();
+          break;
+        }
       }
     }
 
     function handleCanvasMouseMove(e) {
       const { x, y } = getCanvasCoords(e);
-      if (dragging) {
-        const pos = dragging === 'top' ? textPositions.top : textPositions.bottom;
-        pos.x = Math.max(0, Math.min(memeCanvas.width, x + dragOffset.x));
-        pos.y = Math.max(0, Math.min(memeCanvas.height, y + dragOffset.y));
+      if (draggingLayerId) {
+        const layer = textLayers.find(l => l.id === draggingLayerId);
+        if (!layer) return;
+        layer.x = Math.max(0, Math.min(memeCanvas.width, x + dragOffset.x));
+        layer.y = Math.max(0, Math.min(memeCanvas.height, y + dragOffset.y));
         drawMeme();
       } else {
-        const topText = topTextInput.value.trim();
-        const bottomText = bottomTextInput.value.trim();
-        const overText = hitTestText('top', topText, x, y) || hitTestText('bottom', bottomText, x, y);
+        const overText = textLayers.some(l => hitTestLayer(l, x, y));
         memeCanvas.style.cursor = overText ? 'grab' : 'default';
       }
     }
 
     function handleCanvasMouseUp() {
-      if (dragging) {
+      if (draggingLayerId) {
         memeCanvas.classList.remove('dragging');
-        dragging = null;
+        draggingLayerId = null;
       }
     }
 
@@ -707,8 +825,42 @@
       hideError();
     });
 
-    topTextInput.addEventListener('input', drawMeme);
-    bottomTextInput.addEventListener('input', drawMeme);
+    addTextLayerBtn.addEventListener('click', () => {
+      if (!currentImage) return;
+      const idx = textLayers.length + 1;
+      const layer = {
+        id: generateId(),
+        name: `Text ${idx}`,
+        text: '',
+        x: memeCanvas.width / 2,
+        y: memeCanvas.height / 2
+      };
+      textLayers.push(layer);
+      selectedLayerId = layer.id;
+      syncLayerEditor();
+      renderLayerList();
+      drawMeme();
+      layerTextInput.focus();
+    });
+
+    deleteTextLayerBtn.addEventListener('click', () => {
+      if (!selectedLayerId) return;
+      const idx = textLayers.findIndex(l => l.id === selectedLayerId);
+      if (idx === -1) return;
+      textLayers.splice(idx, 1);
+      selectedLayerId = textLayers[Math.min(idx, textLayers.length - 1)]?.id ?? null;
+      syncLayerEditor();
+      renderLayerList();
+      drawMeme();
+    });
+
+    layerTextInput.addEventListener('input', () => {
+      const layer = getSelectedLayer();
+      if (!layer) return;
+      layer.text = layerTextInput.value;
+      renderLayerList();
+      drawMeme();
+    });
 
     fontSizeInput.addEventListener('input', () => {
       fontSizeValue.textContent = `${fontSizeInput.value}px`;
