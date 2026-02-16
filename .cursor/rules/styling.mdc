@@ -1,0 +1,43 @@
+---
+alwaysApply: true
+---
+# Styling Conventions
+
+## Design Philosophy
+
+**Clean, minimalist design.** Prioritize clarity, ample whitespace, and purposeful elements. Avoid decorative clutter, excessive borders, gradients, or visual noise.
+
+## Design System
+
+**Do not use purple or blue gradients/colors as the primary accent.**
+
+Match the existing visual language:
+
+- **Background**: `#1a1a2e` (dark navy)
+- **Surface/cards**: `#252540` or `rgba(255,255,255,0.03)` for subtle elevation
+- **Accent**: Use warm or neutral tones (e.g. `#f90` orange, `#0a0` green, `#e85` coral)—avoid blue/purple
+- **Accent hover**: Darken the accent slightly for hover states
+- **Text primary**: `#eee` / `#fff`
+- **Text secondary**: `#ccc` / `#999`
+- **Borders**: `#444` default, `#666` on hover
+- **Error**: `#f55` with `rgba(255,85,85,0.1)` background
+
+## CSS Practices
+
+- Use `box-sizing: border-box` globally
+- Prefer `rem` for spacing and font sizes; use `px` only for fine-grained values (e.g. borders, shadows)
+- Add `transition` for interactive states (e.g. `transition: border-color 0.2s, background 0.2s`)
+- Use `border-radius: 6px` for inputs/buttons, `8px` for larger containers
+- Include `:focus` and `:hover` states for interactive elements
+
+## Layout
+
+- Max content width: `800px` with `margin: 0 auto`
+- Use `gap` for flex/grid spacing instead of margins where possible
+- Responsive: `min-height: 100vh` for full-height layouts; `max-width: 100%` for images/canvas
+
+## Typography
+
+- Font stack: `system-ui, -apple-system, sans-serif`
+- Headings: `2rem` for h1, `font-weight: 500` for labels
+- Use `font-weight: 600` for emphasis (e.g. buttons, values)

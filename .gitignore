@@ -1,0 +1,17 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+*.swp
+*.swo
+*~
+
+# Dependencies (if you add npm later)
+node_modules/
+
+# Build output (if you add a build step later)
+dist/
+build/

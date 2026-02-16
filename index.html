@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meme Generator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #000;
+      color: #eee;
+      min-height: 100vh;
+    }
+
+    .app {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid #333;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 2rem;
+      font-weight: 500;
+      color: #fff;
+    }
+    .header p {
+      margin: 0.5rem 0 0;
+      color: #999;
+      font-size: 0.95rem;
+    }
+
+    .upload-zone {
+      border: 2px dashed #444;
+      border-radius: 8px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .upload-zone:hover {
+      border-color: #666;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .upload-zone.dragover {
+      border-color: #e85;
+      background: rgba(238, 136, 85, 0.1);
+    }
+    .upload-zone input[type="file"] {
+      display: none;
+    }
+    .upload-zone .upload-icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 1rem;
+      border: 2px solid #444;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      font-size: 1.75rem;
+      font-weight: 300;
+      line-height: 1;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .upload-zone:hover .upload-icon {
+      border-color: #666;
+      color: #999;
+    }
+    .upload-zone p {
+      margin: 0;
+      color: #999;
+      font-size: 1rem;
+    }
+    .upload-zone p strong {
+      color: #ccc;
+    }
+
+    .workspace {
+      display: none;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+    .workspace.active {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+    }
+    @media (max-width: 768px) {
+      .workspace.active {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .preview-section {
+      position: sticky;
+      top: 2rem;
+    }
+    .canvas-wrapper {
+      position: relative;
+      background: #111;
+      border-radius: 8px;
+      padding: 1rem;
+      border: 1px solid #333;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+    .canvas-wrapper canvas {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+      cursor: default;
+    }
+    .canvas-wrapper canvas.dragging {
+      cursor: grabbing;
+    }
+    .canvas-hint {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 0.5rem;
+    }
+    .canvas-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .btn {
+      padding: 0.6rem 1.2rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    .btn-primary {
+      background: #e85;
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #d75;
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ccc;
+      border: 1px solid #444;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: #666;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .controls-panel {
+      background: #111;
+      border-radius: 8px;
+      padding: 1.5rem;
+      border: 1px solid #333;
+    }
+    .controls-panel h2 {
+      margin: 0 0 1.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .control-group label {
+      font-weight: 500;
+      font-size: 0.9rem;
+      color: #ccc;
+    }
+    .control-group input[type="text"],
+    .control-group textarea {
+      padding: 0.75rem;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: #0a0a0a;
+      color: #fff;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+      resize: vertical;
+      font-family: inherit;
+    }
+    .control-group textarea {
+      min-height: 2.5rem;
+    }
+    .control-group input[type="text"]:focus,
+    .control-group textarea:focus {
+      outline: none;
+      border-color: #e85;
+    }
+    .control-group input[type="text"]::placeholder,
+    .control-group textarea::placeholder {
+      color: #666;
+    }
+    .font-size-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .font-size-row input[type="range"] {
+      flex: 1;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #333;
+      border-radius: 3px;
+    }
+    .font-size-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #e85;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .font-size-row input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+    .font-size-value {
+      min-width: 4ch;
+      font-weight: 600;
+      color: #e85;
+    }
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .color-row input[type="color"] {
+      width: 48px;
+      height: 36px;
+      padding: 2px;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: #0a0a0a;
+      cursor: pointer;
+    }
+    .color-row input[type="color"]:focus {
+      outline: none;
+      border-color: #e85;
+    }
+    .color-value {
+      font-size: 0.9rem;
+      color: #999;
+    }
+
+    .error-message {
+      color: #f55;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      background: rgba(255, 85, 85, 0.1);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 85, 85, 0.2);
+    }
+    .hidden {
+      display: none !important;
+    }
+
+    .picker-section.hidden {
+      display: none !important;
+    }
+
+    .picker-section {
+      margin-bottom: 2rem;
+    }
+    .picker-section h2 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0 0 1rem;
+    }
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+    .template-thumb {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid #333;
+      transition: border-color 0.2s, opacity 0.2s;
+    }
+    .template-thumb:hover {
+      border-color: #666;
+      opacity: 0.95;
+    }
+    .template-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .picker-divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .picker-divider::before,
+    .picker-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #333;
+    }
+    .picker-divider span {
+      color: #666;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>Meme Generator</h1>
+      <p>Choose a template or upload your own image</p>
+    </header>
+
+    <div class="picker-section" id="pickerSection">
+      <h2>Templates</h2>
+      <div class="template-grid" id="templateGrid"></div>
+      <div class="picker-divider">
+        <span>or upload your own</span>
+      </div>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="imageInput" accept="image/*">
+        <div class="upload-icon">+</div>
+        <p><strong>Click or drag</strong> an image here</p>
+      </div>
+    </div>
+
+    <div id="errorMessage" class="error-message hidden"></div>
+
+    <div class="workspace" id="workspace">
+      <section class="preview-section">
+        <div class="canvas-wrapper">
+          <canvas id="memeCanvas"></canvas>
+          <p class="canvas-hint">Drag text on the image to reposition</p>
+        </div>
+        <div class="canvas-actions">
+          <button class="btn btn-primary" id="downloadBtn" disabled>Download Meme</button>
+          <button class="btn btn-secondary" id="changeImageBtn">Choose Another Image</button>
+        </div>
+      </section>
+      <aside class="controls-panel">
+        <h2>Text & Style</h2>
+        <div class="controls">
+          <div class="control-group">
+            <label for="topText">Top text</label>
+            <textarea id="topText" placeholder="When you... (Enter for new line)" rows="2"></textarea>
+          </div>
+          <div class="control-group">
+            <label for="bottomText">Bottom text</label>
+            <textarea id="bottomText" placeholder="...but then (Enter for new line)" rows="2"></textarea>
+          </div>
+          <div class="control-group">
+            <label>Font size</label>
+            <div class="font-size-row">
+              <input type="range" id="fontSize" min="12" max="120" value="48">
+              <span class="font-size-value" id="fontSizeValue">48px</span>
+            </div>
+          </div>
+          <div class="control-group">
+            <label for="textColor">Text color</label>
+            <div class="color-row">
+              <input type="color" id="textColor" value="#ffffff">
+              <span class="color-value" id="textColorValue">#ffffff</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const uploadZone = document.getElementById('uploadZone');
+    const imageInput = document.getElementById('imageInput');
+    const errorMessage = document.getElementById('errorMessage');
+    const workspace = document.getElementById('workspace');
+    const memeCanvas = document.getElementById('memeCanvas');
+    const topTextInput = document.getElementById('topText');
+    const bottomTextInput = document.getElementById('bottomText');
+    const fontSizeInput = document.getElementById('fontSize');
+    const fontSizeValue = document.getElementById('fontSizeValue');
+    const textColorInput = document.getElementById('textColor');
+    const textColorValue = document.getElementById('textColorValue');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const changeImageBtn = document.getElementById('changeImageBtn');
+
+    const ctx = memeCanvas.getContext('2d');
+    let currentImage = null;
+    let textPositions = { top: null, bottom: null };
+    let dragging = null;
+    let dragOffset = { x: 0, y: 0 };
+
+    function showError(msg) {
+      errorMessage.textContent = msg;
+      errorMessage.classList.remove('hidden');
+    }
+
+    function hideError() {
+      errorMessage.classList.add('hidden');
+    }
+
+    // Add new template paths here when you add images to the assets folder
+    const TEMPLATES = [
+      'assets/cointreau-p.jpg',
+      'assets/cointreau.png',
+      'assets/image.png',
+      'assets/Instinct Beef Pet Food.jpg',
+      'assets/Instinct Logo.png',
+      'assets/Instinct Pet Food.jpg',
+      'assets/Instinct-primary-logo-RGB_060525_NEBRASKA_BLUE_NEBRASKA_BLUE.png',
+      'assets/IPF_CAT_RAWBOOST_KIBBLE_GRAIN_FREE_14-5x8_061225_GF_FRONT_IPF_BAG_TALL-45339.png',
+      'assets/Nike Shoe.jpg',
+      'assets/Nike.png',
+      'assets/Nike1.png',
+      'assets/product-cooler.png',
+      'assets/Spalding Logo.png',
+      'assets/Spalding.jpg',
+      'assets/yeti 1.png'
+    ];
+
+    const pickerSection = document.getElementById('pickerSection');
+    const templateGrid = document.getElementById('templateGrid');
+
+    function showWorkspace() {
+      pickerSection.classList.add('hidden');
+      workspace.classList.add('active');
+    }
+
+    function showPicker() {
+      pickerSection.classList.remove('hidden');
+      workspace.classList.remove('active');
+      currentImage = null;
+      imageInput.value = '';
+    }
+
+    function resetTextPositions() {
+      const padding = 30;
+      textPositions = {
+        top: { x: memeCanvas.width / 2, y: padding },
+        bottom: { x: memeCanvas.width / 2, y: memeCanvas.height - padding }
+      };
+    }
+
+    function getCanvasCoords(e) {
+      const rect = memeCanvas.getBoundingClientRect();
+      const scaleX = memeCanvas.width / rect.width;
+      const scaleY = memeCanvas.height / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    function loadImageFromUrl(src) {
+      hideError();
+      const img = new Image();
+      img.onload = () => {
+        currentImage = img;
+        memeCanvas.width = img.width;
+        memeCanvas.height = img.height;
+        resetTextPositions();
+        showWorkspace();
+        downloadBtn.disabled = false;
+        drawMeme();
+      };
+      img.onerror = () => showError('Failed to load template image.');
+      img.src = src;
+    }
+
+    TEMPLATES.forEach((src) => {
+      const thumb = document.createElement('button');
+      thumb.type = 'button';
+      thumb.className = 'template-thumb';
+      thumb.setAttribute('aria-label', 'Use template');
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '';
+      thumb.appendChild(img);
+      thumb.addEventListener('click', () => loadImageFromUrl(src));
+      templateGrid.appendChild(thumb);
+    });
+
+    function loadImage(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        showError('Please select a valid image file.');
+        return;
+      }
+      hideError();
+
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        currentImage = img;
+        memeCanvas.width = img.width;
+        memeCanvas.height = img.height;
+        resetTextPositions();
+        showWorkspace();
+        downloadBtn.disabled = false;
+        drawMeme();
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        showError('Failed to load image. Please try another file.');
+      };
+
+      img.src = url;
+    }
+
+    function drawMeme() {
+      if (!currentImage) return;
+
+      ctx.clearRect(0, 0, memeCanvas.width, memeCanvas.height);
+      ctx.drawImage(currentImage, 0, 0);
+
+      const topText = topTextInput.value.trim();
+      const bottomText = bottomTextInput.value.trim();
+      const fontSize = parseInt(fontSizeInput.value, 10);
+
+      if (!topText && !bottomText) return;
+
+      if (!textPositions.top) resetTextPositions();
+
+      ctx.strokeStyle = '#000000';
+      ctx.fillStyle = textColorInput.value;
+      ctx.lineWidth = Math.max(4, Math.floor(fontSize / 8));
+      ctx.lineJoin = 'round';
+      ctx.textAlign = 'center';
+      ctx.font = `${fontSize}px Impact, sans-serif`;
+
+      const lineHeight = fontSize * 1.15;
+
+      function drawLines(lines, pos, baseline) {
+        if (baseline === 'top') {
+          let y = pos.y;
+          for (const line of lines) {
+            if (line.trim()) {
+              ctx.textBaseline = 'top';
+              ctx.strokeText(line, pos.x, y);
+              ctx.fillText(line, pos.x, y);
+            }
+            y += lineHeight;
+          }
+        } else {
+          let y = pos.y;
+          for (let i = lines.length - 1; i >= 0; i--) {
+            const line = lines[i];
+            if (line.trim()) {
+              ctx.textBaseline = 'bottom';
+              ctx.strokeText(line, pos.x, y);
+              ctx.fillText(line, pos.x, y);
+            }
+            y -= lineHeight;
+          }
+        }
+      }
+
+      if (topText) {
+        const lines = topText.split(/\r?\n/);
+        drawLines(lines, textPositions.top, 'top');
+      }
+
+      if (bottomText) {
+        const lines = bottomText.split(/\r?\n/);
+        drawLines(lines, textPositions.bottom, 'bottom');
+      }
+    }
+
+    function hitTestText(block, text, x, y) {
+      if (!text || !block) return false;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length === 0) return false;
+      const fontSize = parseInt(fontSizeInput.value, 10);
+      const lineHeight = fontSize * 1.15;
+      ctx.font = `${fontSize}px Impact, sans-serif`;
+      ctx.textAlign = 'center';
+      let maxW = 0;
+      for (const line of lines) {
+        maxW = Math.max(maxW, ctx.measureText(line).width);
+      }
+      const h = lines.length * lineHeight;
+      const pos = block === 'top' ? textPositions.top : textPositions.bottom;
+      const left = pos.x - maxW / 2;
+      const right = pos.x + maxW / 2;
+      const top = block === 'top' ? pos.y : pos.y - h;
+      const bottom = block === 'top' ? pos.y + h : pos.y;
+      return x >= left && x <= right && y >= top && y <= bottom;
+    }
+
+    function handleCanvasMouseDown(e) {
+      if (!currentImage) return;
+      const { x, y } = getCanvasCoords(e);
+      const topText = topTextInput.value.trim();
+      const bottomText = bottomTextInput.value.trim();
+      if (hitTestText('top', topText, x, y)) {
+        dragging = 'top';
+        dragOffset = { x: textPositions.top.x - x, y: textPositions.top.y - y };
+        memeCanvas.classList.add('dragging');
+      } else if (hitTestText('bottom', bottomText, x, y)) {
+        dragging = 'bottom';
+        dragOffset = { x: textPositions.bottom.x - x, y: textPositions.bottom.y - y };
+        memeCanvas.classList.add('dragging');
+      }
+    }
+
+    function handleCanvasMouseMove(e) {
+      const { x, y } = getCanvasCoords(e);
+      if (dragging) {
+        const pos = dragging === 'top' ? textPositions.top : textPositions.bottom;
+        pos.x = Math.max(0, Math.min(memeCanvas.width, x + dragOffset.x));
+        pos.y = Math.max(0, Math.min(memeCanvas.height, y + dragOffset.y));
+        drawMeme();
+      } else {
+        const topText = topTextInput.value.trim();
+        const bottomText = bottomTextInput.value.trim();
+        const overText = hitTestText('top', topText, x, y) || hitTestText('bottom', bottomText, x, y);
+        memeCanvas.style.cursor = overText ? 'grab' : 'default';
+      }
+    }
+
+    function handleCanvasMouseUp() {
+      if (dragging) {
+        memeCanvas.classList.remove('dragging');
+        dragging = null;
+      }
+    }
+
+    memeCanvas.addEventListener('mousedown', handleCanvasMouseDown);
+    memeCanvas.addEventListener('mousemove', handleCanvasMouseMove);
+    memeCanvas.addEventListener('mouseup', handleCanvasMouseUp);
+    memeCanvas.addEventListener('mouseleave', handleCanvasMouseUp);
+
+    function downloadMeme() {
+      if (!currentImage) return;
+
+      const link = document.createElement('a');
+      link.download = 'meme.png';
+      link.href = memeCanvas.toDataURL('image/png');
+      link.click();
+    }
+
+    uploadZone.addEventListener('click', () => imageInput.click());
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) loadImage(file);
+    });
+
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) loadImage(file);
+    });
+
+    changeImageBtn.addEventListener('click', () => {
+      showPicker();
+      hideError();
+    });
+
+    topTextInput.addEventListener('input', drawMeme);
+    bottomTextInput.addEventListener('input', drawMeme);
+
+    fontSizeInput.addEventListener('input', () => {
+      fontSizeValue.textContent = `${fontSizeInput.value}px`;
+      drawMeme();
+    });
+
+    textColorInput.addEventListener('input', () => {
+      textColorValue.textContent = textColorInput.value;
+      drawMeme();
+    });
+
+    downloadBtn.addEventListener('click', downloadMeme);
+  </script>
+</body>
+</html>
