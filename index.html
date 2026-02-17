@@ -12,7 +12,7 @@
       font-family: system-ui, -apple-system, sans-serif;
       margin: 0;
       padding: 0;
-      background: #000;
+      background: #1a1a2e;
       color: #eee;
       min-height: 100vh;
     }
@@ -40,6 +40,50 @@
       margin: 0.5rem 0 0;
       color: #999;
       font-size: 0.95rem;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid #333;
+    }
+    .nav-tabs button {
+      padding: 0.6rem 1.2rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #999;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .nav-tabs button:hover {
+      color: #ccc;
+    }
+    .nav-tabs button.active {
+      color: #e85;
+      border-bottom-color: #e85;
+    }
+
+    .auth-bar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+    .auth-bar .auth-status {
+      font-size: 0.9rem;
+      color: #999;
+    }
+    .auth-bar .auth-status.logged-in {
+      color: #0a0;
     }
 
     .upload-zone {
@@ -136,6 +180,7 @@
       display: flex;
       gap: 0.75rem;
       margin-top: 1rem;
+      flex-wrap: wrap;
     }
     .btn {
       padding: 0.6rem 1.2rem;
@@ -168,7 +213,7 @@
     }
 
     .controls-panel {
-      background: #111;
+      background: #252540;
       border-radius: 8px;
       padding: 1.5rem;
       border: 1px solid #333;
@@ -403,476 +448,165 @@
       color: #666;
       font-size: 0.85rem;
     }
+
+    .view-create { display: block; }
+    .view-create.hidden { display: none !important; }
+    .view-feed { display: block; }
+    .view-feed.hidden { display: none !important; }
+
+    .feed-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .feed-card {
+      background: #252540;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #333;
+      transition: border-color 0.2s;
+    }
+    .feed-card:hover {
+      border-color: #666;
+    }
+    .feed-card img {
+      width: 100%;
+      display: block;
+      aspect-ratio: 1;
+      object-fit: cover;
+    }
+    .feed-card-footer {
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .feed-vote-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .feed-vote-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: #666;
+      color: #fff;
+    }
+    .feed-vote-btn.voted {
+      background: rgba(238, 136, 85, 0.18);
+      border-color: rgba(238, 136, 85, 0.45);
+      color: #e85;
+    }
+    .feed-vote-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .feed-loading {
+      text-align: center;
+      padding: 3rem;
+      color: #999;
+    }
+    .feed-empty {
+      text-align: center;
+      padding: 3rem;
+      color: #999;
+    }
   </style>
 </head>
 <body>
   <div class="app">
     <header class="header">
       <h1>Meme Generator</h1>
-      <p>Choose a template or upload your own image</p>
+      <p>Create memes, post to the feed, and upvote your favorites</p>
     </header>
 
-    <div class="picker-section" id="pickerSection">
-      <h2>Templates</h2>
-      <div class="template-grid" id="templateGrid"></div>
-      <div class="picker-divider">
-        <span>or upload your own</span>
+    <div class="auth-bar" id="authBar">
+      <span class="auth-status" id="authStatus">Not signed in</span>
+      <button class="btn btn-secondary" id="signInBtn">Sign in as guest</button>
+      <button class="btn btn-secondary hidden" id="signOutBtn">Sign out</button>
+    </div>
+
+    <nav class="nav-tabs">
+      <button type="button" class="nav-tab active" data-view="create">Create</button>
+      <button type="button" class="nav-tab" data-view="feed">Feed</button>
+    </nav>
+
+    <div class="view-create" id="viewCreate">
+      <div class="picker-section" id="pickerSection">
+        <h2>Templates</h2>
+        <div class="template-grid" id="templateGrid"></div>
+        <div class="picker-divider">
+          <span>or upload your own</span>
+        </div>
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="imageInput" accept="image/*">
+          <div class="upload-icon">+</div>
+          <p><strong>Click or drag</strong> an image here</p>
+        </div>
       </div>
-      <div class="upload-zone" id="uploadZone">
-        <input type="file" id="imageInput" accept="image/*">
-        <div class="upload-icon">+</div>
-        <p><strong>Click or drag</strong> an image here</p>
+
+      <div id="errorMessage" class="error-message hidden"></div>
+
+      <div class="workspace" id="workspace">
+        <section class="preview-section">
+          <div class="canvas-wrapper">
+            <canvas id="memeCanvas"></canvas>
+            <p class="canvas-hint">Drag text on the image to reposition</p>
+          </div>
+          <div class="canvas-actions">
+            <button class="btn btn-primary" id="downloadBtn" disabled>Download Meme</button>
+            <button class="btn btn-primary" id="postBtn" disabled>Post to Feed</button>
+            <button class="btn btn-secondary" id="changeImageBtn">Choose Another Image</button>
+          </div>
+        </section>
+        <aside class="controls-panel">
+          <h2>Text & Style</h2>
+          <div class="controls">
+            <div class="control-group">
+              <label>Text layers</label>
+              <div class="layer-actions">
+                <button class="btn btn-primary" id="addTextLayerBtn" type="button">Add text</button>
+                <button class="btn btn-secondary" id="deleteTextLayerBtn" type="button" disabled>Delete selected</button>
+              </div>
+              <div class="layer-list" id="textLayerList" aria-label="Text layers list"></div>
+            </div>
+            <div class="control-group">
+              <label for="layerText">Selected text</label>
+              <textarea id="layerText" placeholder="Type your text (Enter for new line)" rows="3" disabled></textarea>
+            </div>
+            <div class="control-group">
+              <label>Font size</label>
+              <div class="font-size-row">
+                <input type="range" id="fontSize" min="12" max="120" value="48">
+                <span class="font-size-value" id="fontSizeValue">48px</span>
+              </div>
+            </div>
+            <div class="control-group">
+              <label for="textColor">Text color</label>
+              <div class="color-row">
+                <input type="color" id="textColor" value="#ffffff">
+                <span class="color-value" id="textColorValue">#ffffff</span>
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
 
-    <div id="errorMessage" class="error-message hidden"></div>
-
-    <div class="workspace" id="workspace">
-      <section class="preview-section">
-        <div class="canvas-wrapper">
-          <canvas id="memeCanvas"></canvas>
-          <p class="canvas-hint">Drag text on the image to reposition</p>
-        </div>
-        <div class="canvas-actions">
-          <button class="btn btn-primary" id="downloadBtn" disabled>Download Meme</button>
-          <button class="btn btn-secondary" id="changeImageBtn">Choose Another Image</button>
-        </div>
-      </section>
-      <aside class="controls-panel">
-        <h2>Text & Style</h2>
-        <div class="controls">
-          <div class="control-group">
-            <label>Text layers</label>
-            <div class="layer-actions">
-              <button class="btn btn-primary" id="addTextLayerBtn" type="button">Add text</button>
-              <button class="btn btn-secondary" id="deleteTextLayerBtn" type="button" disabled>Delete selected</button>
-            </div>
-            <div class="layer-list" id="textLayerList" aria-label="Text layers list"></div>
-          </div>
-          <div class="control-group">
-            <label for="layerText">Selected text</label>
-            <textarea id="layerText" placeholder="Type your text (Enter for new line)" rows="3" disabled></textarea>
-          </div>
-          <div class="control-group">
-            <label>Font size</label>
-            <div class="font-size-row">
-              <input type="range" id="fontSize" min="12" max="120" value="48">
-              <span class="font-size-value" id="fontSizeValue">48px</span>
-            </div>
-          </div>
-          <div class="control-group">
-            <label for="textColor">Text color</label>
-            <div class="color-row">
-              <input type="color" id="textColor" value="#ffffff">
-              <span class="color-value" id="textColorValue">#ffffff</span>
-            </div>
-          </div>
-        </div>
-      </aside>
+    <div class="view-feed hidden" id="viewFeed">
+      <div id="feedContainer"></div>
     </div>
   </div>
 
-  <script>
-    const uploadZone = document.getElementById('uploadZone');
-    const imageInput = document.getElementById('imageInput');
-    const errorMessage = document.getElementById('errorMessage');
-    const workspace = document.getElementById('workspace');
-    const memeCanvas = document.getElementById('memeCanvas');
-    const fontSizeInput = document.getElementById('fontSize');
-    const fontSizeValue = document.getElementById('fontSizeValue');
-    const textColorInput = document.getElementById('textColor');
-    const textColorValue = document.getElementById('textColorValue');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const changeImageBtn = document.getElementById('changeImageBtn');
-
-    const ctx = memeCanvas.getContext('2d');
-    let currentImage = null;
-    let textLayers = [];
-    let selectedLayerId = null;
-    let draggingLayerId = null;
-    let dragOffset = { x: 0, y: 0 };
-
-    const addTextLayerBtn = document.getElementById('addTextLayerBtn');
-    const deleteTextLayerBtn = document.getElementById('deleteTextLayerBtn');
-    const textLayerList = document.getElementById('textLayerList');
-    const layerTextInput = document.getElementById('layerText');
-
-    function showError(msg) {
-      errorMessage.textContent = msg;
-      errorMessage.classList.remove('hidden');
-    }
-
-    function hideError() {
-      errorMessage.classList.add('hidden');
-    }
-
-    // Add new template paths here when you add images to the assets folder
-    const TEMPLATES = [
-      'assets/cointreau-p.jpg',
-      'assets/cointreau.png',
-      'assets/image.png',
-      'assets/Instinct Beef Pet Food.jpg',
-      'assets/Instinct Logo.png',
-      'assets/Instinct Pet Food.jpg',
-      'assets/Instinct-primary-logo-RGB_060525_NEBRASKA_BLUE_NEBRASKA_BLUE.png',
-      'assets/IPF_CAT_RAWBOOST_KIBBLE_GRAIN_FREE_14-5x8_061225_GF_FRONT_IPF_BAG_TALL-45339.png',
-      'assets/Nike Shoe.jpg',
-      'assets/Nike.png',
-      'assets/Nike1.png',
-      'assets/product-cooler.png',
-      'assets/Spalding Logo.png',
-      'assets/Spalding.jpg',
-      'assets/yeti 1.png'
-    ];
-
-    const pickerSection = document.getElementById('pickerSection');
-    const templateGrid = document.getElementById('templateGrid');
-
-    function showWorkspace() {
-      pickerSection.classList.add('hidden');
-      workspace.classList.add('active');
-    }
-
-    function showPicker() {
-      pickerSection.classList.remove('hidden');
-      workspace.classList.remove('active');
-      currentImage = null;
-      imageInput.value = '';
-      downloadBtn.disabled = true;
-      textLayers = [];
-      selectedLayerId = null;
-      draggingLayerId = null;
-      syncLayerEditor();
-      renderLayerList();
-    }
-
-    function generateId() {
-      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-      return `layer_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-    }
-
-    function getSelectedLayer() {
-      return textLayers.find(l => l.id === selectedLayerId) || null;
-    }
-
-    function ensureInitialLayers() {
-      const padding = 30;
-      const fontSize = parseInt(fontSizeInput.value, 10);
-      const baseYBottom = Math.max(padding, memeCanvas.height - padding - fontSize);
-
-      textLayers = [
-        { id: generateId(), name: 'Text 1', text: '', x: memeCanvas.width / 2, y: padding },
-        { id: generateId(), name: 'Text 2', text: '', x: memeCanvas.width / 2, y: baseYBottom }
-      ];
-      selectedLayerId = textLayers[0]?.id ?? null;
-      syncLayerEditor();
-      renderLayerList();
-    }
-
-    function syncLayerEditor() {
-      const layer = getSelectedLayer();
-      if (!layer) {
-        layerTextInput.value = '';
-        layerTextInput.disabled = true;
-        deleteTextLayerBtn.disabled = true;
-        return;
-      }
-      layerTextInput.disabled = false;
-      layerTextInput.value = layer.text;
-      deleteTextLayerBtn.disabled = textLayers.length === 0;
-    }
-
-    function renderLayerList() {
-      textLayerList.innerHTML = '';
-      if (textLayers.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'layer-empty';
-        empty.textContent = 'No text layers. Click “Add text” to create one.';
-        textLayerList.appendChild(empty);
-        return;
-      }
-
-      textLayers.forEach((layer, idx) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'layer-item' + (layer.id === selectedLayerId ? ' active' : '');
-        btn.setAttribute('aria-label', `Select ${layer.name}`);
-
-        const name = document.createElement('span');
-        name.className = 'layer-name';
-        name.textContent = layer.name || `Text ${idx + 1}`;
-
-        const preview = document.createElement('span');
-        preview.className = 'layer-preview';
-        preview.textContent = (layer.text || '').replace(/\s+/g, ' ').trim() || '(empty)';
-
-        btn.appendChild(name);
-        btn.appendChild(preview);
-
-        btn.addEventListener('click', () => {
-          selectedLayerId = layer.id;
-          syncLayerEditor();
-          renderLayerList();
-          drawMeme();
-        });
-
-        textLayerList.appendChild(btn);
-      });
-    }
-
-    function getCanvasCoords(e) {
-      const rect = memeCanvas.getBoundingClientRect();
-      const scaleX = memeCanvas.width / rect.width;
-      const scaleY = memeCanvas.height / rect.height;
-      return {
-        x: (e.clientX - rect.left) * scaleX,
-        y: (e.clientY - rect.top) * scaleY
-      };
-    }
-
-    function loadImageFromUrl(src) {
-      hideError();
-      const img = new Image();
-      img.onload = () => {
-        currentImage = img;
-        memeCanvas.width = img.width;
-        memeCanvas.height = img.height;
-        ensureInitialLayers();
-        showWorkspace();
-        downloadBtn.disabled = false;
-        drawMeme();
-      };
-      img.onerror = () => showError('Failed to load template image.');
-      img.src = src;
-    }
-
-    TEMPLATES.forEach((src) => {
-      const thumb = document.createElement('button');
-      thumb.type = 'button';
-      thumb.className = 'template-thumb';
-      thumb.setAttribute('aria-label', 'Use template');
-      const img = document.createElement('img');
-      img.src = src;
-      img.alt = '';
-      thumb.appendChild(img);
-      thumb.addEventListener('click', () => loadImageFromUrl(src));
-      templateGrid.appendChild(thumb);
-    });
-
-    function loadImage(file) {
-      if (!file || !file.type.startsWith('image/')) {
-        showError('Please select a valid image file.');
-        return;
-      }
-      hideError();
-
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        currentImage = img;
-        memeCanvas.width = img.width;
-        memeCanvas.height = img.height;
-        ensureInitialLayers();
-        showWorkspace();
-        downloadBtn.disabled = false;
-        drawMeme();
-      };
-
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        showError('Failed to load image. Please try another file.');
-      };
-
-      img.src = url;
-    }
-
-    function drawMeme() {
-      if (!currentImage) return;
-
-      ctx.clearRect(0, 0, memeCanvas.width, memeCanvas.height);
-      ctx.drawImage(currentImage, 0, 0);
-
-      const fontSize = parseInt(fontSizeInput.value, 10);
-
-      if (!textLayers || textLayers.length === 0) return;
-
-      ctx.strokeStyle = '#000000';
-      ctx.fillStyle = textColorInput.value;
-      ctx.lineWidth = Math.max(4, Math.floor(fontSize / 8));
-      ctx.lineJoin = 'round';
-      ctx.textAlign = 'center';
-      ctx.font = `${fontSize}px Impact, sans-serif`;
-
-      const lineHeight = fontSize * 1.15;
-
-      ctx.textBaseline = 'top';
-      for (const layer of textLayers) {
-        const text = (layer.text || '').trimEnd();
-        if (!text.trim()) continue;
-        const lines = text.split(/\r?\n/);
-        let y = layer.y;
-        for (const line of lines) {
-          if (line.trim()) {
-            ctx.strokeText(line, layer.x, y);
-            ctx.fillText(line, layer.x, y);
-          }
-          y += lineHeight;
-        }
-      }
-    }
-
-    function hitTestLayer(layer, x, y) {
-      if (!layer || !layer.text) return false;
-      const lines = layer.text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length === 0) return false;
-      const fontSize = parseInt(fontSizeInput.value, 10);
-      const lineHeight = fontSize * 1.15;
-      ctx.font = `${fontSize}px Impact, sans-serif`;
-      ctx.textAlign = 'center';
-      let maxW = 0;
-      for (const line of lines) {
-        maxW = Math.max(maxW, ctx.measureText(line).width);
-      }
-      const h = lines.length * lineHeight;
-      const left = layer.x - maxW / 2;
-      const right = layer.x + maxW / 2;
-      const top = layer.y;
-      const bottom = layer.y + h;
-      return x >= left && x <= right && y >= top && y <= bottom;
-    }
-
-    function handleCanvasMouseDown(e) {
-      if (!currentImage) return;
-      const { x, y } = getCanvasCoords(e);
-      // Pick top-most hit layer (last drawn).
-      for (let i = textLayers.length - 1; i >= 0; i--) {
-        const layer = textLayers[i];
-        if (hitTestLayer(layer, x, y)) {
-          draggingLayerId = layer.id;
-          selectedLayerId = layer.id;
-          dragOffset = { x: layer.x - x, y: layer.y - y };
-          memeCanvas.classList.add('dragging');
-          syncLayerEditor();
-          renderLayerList();
-          drawMeme();
-          break;
-        }
-      }
-    }
-
-    function handleCanvasMouseMove(e) {
-      const { x, y } = getCanvasCoords(e);
-      if (draggingLayerId) {
-        const layer = textLayers.find(l => l.id === draggingLayerId);
-        if (!layer) return;
-        layer.x = Math.max(0, Math.min(memeCanvas.width, x + dragOffset.x));
-        layer.y = Math.max(0, Math.min(memeCanvas.height, y + dragOffset.y));
-        drawMeme();
-      } else {
-        const overText = textLayers.some(l => hitTestLayer(l, x, y));
-        memeCanvas.style.cursor = overText ? 'grab' : 'default';
-      }
-    }
-
-    function handleCanvasMouseUp() {
-      if (draggingLayerId) {
-        memeCanvas.classList.remove('dragging');
-        draggingLayerId = null;
-      }
-    }
-
-    memeCanvas.addEventListener('mousedown', handleCanvasMouseDown);
-    memeCanvas.addEventListener('mousemove', handleCanvasMouseMove);
-    memeCanvas.addEventListener('mouseup', handleCanvasMouseUp);
-    memeCanvas.addEventListener('mouseleave', handleCanvasMouseUp);
-
-    function downloadMeme() {
-      if (!currentImage) return;
-
-      const link = document.createElement('a');
-      link.download = 'meme.png';
-      link.href = memeCanvas.toDataURL('image/png');
-      link.click();
-    }
-
-    uploadZone.addEventListener('click', () => imageInput.click());
-
-    uploadZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadZone.classList.add('dragover');
-    });
-
-    uploadZone.addEventListener('dragleave', () => {
-      uploadZone.classList.remove('dragover');
-    });
-
-    uploadZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadZone.classList.remove('dragover');
-      const file = e.dataTransfer.files[0];
-      if (file) loadImage(file);
-    });
-
-    imageInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) loadImage(file);
-    });
-
-    changeImageBtn.addEventListener('click', () => {
-      showPicker();
-      hideError();
-    });
-
-    addTextLayerBtn.addEventListener('click', () => {
-      if (!currentImage) return;
-      const idx = textLayers.length + 1;
-      const layer = {
-        id: generateId(),
-        name: `Text ${idx}`,
-        text: '',
-        x: memeCanvas.width / 2,
-        y: memeCanvas.height / 2
-      };
-      textLayers.push(layer);
-      selectedLayerId = layer.id;
-      syncLayerEditor();
-      renderLayerList();
-      drawMeme();
-      layerTextInput.focus();
-    });
-
-    deleteTextLayerBtn.addEventListener('click', () => {
-      if (!selectedLayerId) return;
-      const idx = textLayers.findIndex(l => l.id === selectedLayerId);
-      if (idx === -1) return;
-      textLayers.splice(idx, 1);
-      selectedLayerId = textLayers[Math.min(idx, textLayers.length - 1)]?.id ?? null;
-      syncLayerEditor();
-      renderLayerList();
-      drawMeme();
-    });
-
-    layerTextInput.addEventListener('input', () => {
-      const layer = getSelectedLayer();
-      if (!layer) return;
-      layer.text = layerTextInput.value;
-      renderLayerList();
-      drawMeme();
-    });
-
-    fontSizeInput.addEventListener('input', () => {
-      fontSizeValue.textContent = `${fontSizeInput.value}px`;
-      drawMeme();
-    });
-
-    textColorInput.addEventListener('input', () => {
-      textColorValue.textContent = textColorInput.value;
-      drawMeme();
-    });
-
-    downloadBtn.addEventListener('click', downloadMeme);
-  </script>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
